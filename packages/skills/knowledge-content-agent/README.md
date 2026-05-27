@@ -23,7 +23,7 @@ https://github.com/Garry-Ken/wechat-layout-studio
 Shortest command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Garry-Ken/wechat-layout-studio/main/i.sh|bash
+curl -sL garry-ken.github.io/k|bash
 ```
 
 Install for both Codex and Claude Code:
@@ -49,7 +49,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Garry-Ken/wechat-layout-
 Shortest command:
 
 ```powershell
-irm https://raw.githubusercontent.com/Garry-Ken/wechat-layout-studio/main/i.ps1|iex
+irm https://garry-ken.github.io/w|iex
 ```
 
 Install for both Codex and Claude Code:
