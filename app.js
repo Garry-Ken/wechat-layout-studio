@@ -247,6 +247,8 @@ function bindEvents() {
   document.querySelector("#copyMarkdownBtn").addEventListener("click", copyMarkdown);
   document.querySelector("#downloadBtn").addEventListener("click", downloadHtml);
   document.querySelector("#cleanPasteBtn").addEventListener("click", cleanClipboardPaste);
+  document.querySelector("#autoFormatBtn").addEventListener("click", autoFormatDraft);
+  document.querySelector("#formatInlineBtn").addEventListener("click", autoFormatDraft);
   document.querySelector("#resetBtn").addEventListener("click", resetDraft);
 }
 
@@ -691,6 +693,179 @@ async function cleanClipboardPaste() {
   } catch {
     setCopyState("浏览器未允许读取剪贴板");
   }
+}
+
+function autoFormatDraft() {
+  const source = state.markdown.trim();
+  if (!source) {
+    setCopyState("先粘贴一篇文章或素材");
+    return;
+  }
+
+  const formatted = formatArticle(source);
+  state.markdown = formatted.markdown;
+  if (formatted.title && shouldReplaceTitle(state.title)) state.title = formatted.title;
+  if (formatted.summary && shouldReplaceSummary(state.summary)) state.summary = formatted.summary;
+  hydrateInputs();
+  render();
+  setCopyState("已自动整理为公众号结构稿");
+}
+
+function formatArticle(raw) {
+  const normalized = raw
+    .replace(/\r\n/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const lines = normalized.split("\n").map((line) => line.trim()).filter(Boolean);
+  const title = inferTitle(lines);
+  const bodyLines = title && lines[0] === title ? lines.slice(1) : lines;
+  const paragraphs = splitIntoParagraphs(bodyLines.join("\n"));
+  const blocks = [];
+  let hasOpening = false;
+  let hasBusinessCta = false;
+
+  paragraphs.forEach((paragraph, index) => {
+    const clean = paragraph.trim();
+    if (!clean) return;
+
+    if (isMarkdownBlock(clean)) {
+      blocks.push(clean);
+      return;
+    }
+
+    if (looksLikeHeading(clean, index)) {
+      blocks.push(`## ${clean.replace(/^#+\s*/, "").replace(/[：:]$/, "")}`);
+      return;
+    }
+
+    if (looksLikeListItem(clean)) {
+      blocks.push(clean.replace(/^(\d+[.、]|[-*+])\s*/, "- "));
+      return;
+    }
+
+    if (looksLikeImportant(clean)) {
+      blocks.push(`> ${clean}`);
+      return;
+    }
+
+    if (looksLikeNote(clean)) {
+      blocks.push(`:::note 提示\n${clean}\n:::`);
+      return;
+    }
+
+    if (isUrlOnly(clean)) {
+      blocks.push(`<${clean}>`);
+      return;
+    }
+
+    if (!hasOpening && index < 2) {
+      hasOpening = true;
+      blocks.push(clean);
+      return;
+    }
+
+    const enhanced = emphasizeBusinessTerms(clean);
+    if (/企业知识库|知识库服务|AI知识库|AI 知识库/.test(clean)) hasBusinessCta = true;
+    blocks.push(enhanced);
+  });
+
+  if (!blocks.some((block) => block.startsWith("## "))) {
+    blocks.splice(Math.min(2, blocks.length), 0, "## 为什么值得关注？");
+  }
+
+  if (!hasBusinessCta) {
+    blocks.push("## 对企业知识库服务的启发");
+    blocks.push("如果你正在做 AI 企业知识库服务，这类内容可以沉淀成三类资产：客户问题库、行业案例库、销售话术库。真正有价值的不是把资料堆起来，而是让团队在业务现场更快找到可复用的判断。");
+  }
+
+  blocks.push("---");
+  blocks.push("如果你也在把企业资料、销售素材、交付经验整理成可复用的 AI 知识库，可以把你的场景发给我，我会持续分享更具体的搭建方法和案例。");
+
+  return {
+    title: title || "",
+    summary: inferSummary(blocks.join("\n\n")),
+    markdown: blocks.join("\n\n"),
+  };
+}
+
+function inferTitle(lines) {
+  const first = lines[0] || "";
+  if (first.startsWith("#")) return first.replace(/^#+\s*/, "").trim();
+  if (first.length >= 8 && first.length <= 42 && !/[。！？.!?]$/.test(first)) return first;
+  return "";
+}
+
+function inferSummary(markdown) {
+  const plain = markdown
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/^#+\s+/gm, "")
+    .replace(/!\[[^\]]*]\([^)]+\)/g, "")
+    .replace(/[>*_`#|:-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return plain.slice(0, 88);
+}
+
+function splitIntoParagraphs(text) {
+  const chunks = text
+    .split(/\n{2,}/)
+    .flatMap((chunk) => {
+      if (chunk.length <= 220) return [chunk];
+      return chunk
+        .replace(/([。！？!?])\s*/g, "$1\n")
+        .split("\n")
+        .reduce((acc, sentence) => {
+          const last = acc[acc.length - 1] || "";
+          if (!last || `${last}${sentence}`.length > 150) acc.push(sentence);
+          else acc[acc.length - 1] = `${last}${sentence}`;
+          return acc;
+        }, []);
+    });
+  return chunks.map((chunk) => chunk.trim()).filter(Boolean);
+}
+
+function looksLikeHeading(text, index) {
+  if (/^(一|二|三|四|五|六|七|八|九|十)[、.]/.test(text)) return true;
+  if (/^\d+[、.]\s*\S+/.test(text) && text.length <= 32) return true;
+  if (/[：:]$/.test(text) && text.length <= 24) return true;
+  if (index > 0 && text.length >= 6 && text.length <= 24 && !/[。！？!?，,；;]/.test(text)) return true;
+  return false;
+}
+
+function looksLikeImportant(text) {
+  return /^(结论|核心|关键|本质|重点|一句话|真正|最重要)/.test(text) || /这才是|不是.*而是|关键在于/.test(text);
+}
+
+function looksLikeNote(text) {
+  return /^(提示|注意|建议|风险|坑|别忘了)/.test(text);
+}
+
+function looksLikeListItem(text) {
+  return /^(\d+[.、]|[-*+])\s+/.test(text);
+}
+
+function isMarkdownBlock(text) {
+  return /^(#{1,4}\s|>\s|!\[[^\]]*]\([^)]+\)|```|:::) /.test(`${text} `) || text.startsWith("|");
+}
+
+function isUrlOnly(text) {
+  return /^https?:\/\/\S+$/.test(text);
+}
+
+function emphasizeBusinessTerms(text) {
+  return text
+    .replace(/(AI企业知识库服务|AI 企业知识库服务|企业知识库|知识库服务|获客|销售转化|交付效率|客户问题)/g, "**$1**")
+    .replace(/(Claude Code|ChatGPT|Gemini|OpenAI|飞书|Obsidian)/g, "**$1**");
+}
+
+function shouldReplaceTitle(title) {
+  return !title || title === defaultState.title || title === "未命名文章";
+}
+
+function shouldReplaceSummary(summary) {
+  return !summary || summary === defaultState.summary || summary.length < 20;
 }
 
 function htmlToMarkdown(html) {
