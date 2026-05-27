@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WeChat Layout Studio</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">W</span>
+          <div>
+            <h1>公众号排版工坊</h1>
+            <p>Markdown 写作、微信预览、富文本复制和发布前检查</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="sampleBtn" class="ghost-btn" type="button" title="载入参考案例风格样稿">
+            <span aria-hidden="true">◎</span>
+            <span>样稿</span>
+          </button>
+          <button id="copyHtmlBtn" class="primary-btn" type="button" title="复制可粘贴到公众号后台的富文本">
+            <span aria-hidden="true">⧉</span>
+            <span>复制到公众号</span>
+          </button>
+          <button id="downloadBtn" class="ghost-btn" type="button" title="下载带内联样式的 HTML">
+            <span aria-hidden="true">⇩</span>
+            <span>HTML</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="editor-pane" aria-label="编辑区">
+          <div class="pane-head">
+            <div>
+              <h2>编辑</h2>
+              <p id="saveState">已启用本地自动保存</p>
+            </div>
+            <button id="cleanPasteBtn" class="icon-btn" type="button" title="从剪贴板读取富文本并清洗成 Markdown">⌘</button>
+          </div>
+
+          <div class="meta-grid">
+            <label>
+              <span>标题</span>
+              <input id="titleInput" type="text" maxlength="64" autocomplete="off">
+            </label>
+            <label>
+              <span>作者</span>
+              <input id="authorInput" type="text" maxlength="24" autocomplete="off">
+            </label>
+            <label>
+              <span>账号</span>
+              <input id="accountInput" type="text" maxlength="24" autocomplete="off">
+            </label>
+            <label>
+              <span>封面图 URL</span>
+              <input id="coverInput" type="url" autocomplete="off">
+            </label>
+            <label class="full-row">
+              <span>摘要</span>
+              <textarea id="summaryInput" rows="3"></textarea>
+            </label>
+          </div>
+
+          <div class="editor-toolbar" aria-label="编辑工具">
+            <button data-insert="## 小标题" type="button" title="插入二级标题">H2</button>
+            <button data-insert="> 引用一段关键判断" type="button" title="插入引用">“</button>
+            <button data-insert=":::note 提示\n这里写卡片内容\n:::" type="button" title="插入信息卡片">▣</button>
+            <button data-insert="```js\nconst idea = 'ship it';\n```" type="button" title="插入代码块">{ }</button>
+            <button data-insert="![图片说明](https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1200&q=80)" type="button" title="插入图片">▧</button>
+          </div>
+
+          <textarea id="markdownInput" class="markdown-input" spellcheck="false" aria-label="Markdown 正文"></textarea>
+        </section>
+
+        <section class="preview-pane" aria-label="预览区">
+          <div class="preview-toolbar">
+            <div class="segmented" role="group" aria-label="预览宽度">
+              <button class="active" data-width="phone" type="button" title="手机宽度">▯</button>
+              <button data-width="tablet" type="button" title="平板宽度">▭</button>
+              <button data-width="desktop" type="button" title="桌面宽度">▱</button>
+            </div>
+            <div class="stats-line" id="statsLine">0 字 · 0 分钟</div>
+          </div>
+          <div class="phone-stage">
+            <article id="wechatPreview" class="wechat-preview phone"></article>
+          </div>
+        </section>
+
+        <aside class="control-pane" aria-label="排版控制">
+          <section class="control-section">
+            <div class="section-title">
+              <h2>风格</h2>
+              <p>参考案例默认选中红线科技风</p>
+            </div>
+            <div id="themeGrid" class="theme-grid"></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-title">
+              <h2>排版</h2>
+              <p>输出会转成公众号友好的内联样式</p>
+            </div>
+            <label class="range-row">
+              <span>字号 <strong id="fontSizeValue">16</strong></span>
+              <input id="fontSizeInput" type="range" min="14" max="18" value="16">
+            </label>
+            <label class="range-row">
+              <span>行高 <strong id="lineHeightValue">1.8</strong></span>
+              <input id="lineHeightInput" type="range" min="1.55" max="2.05" step="0.05" value="1.8">
+            </label>
+            <label class="range-row">
+              <span>段距 <strong id="paragraphGapValue">20</strong></span>
+              <input id="paragraphGapInput" type="range" min="12" max="30" value="20">
+            </label>
+          </section>
+
+          <section class="control-section">
+            <div class="section-title">
+              <h2>发布检查</h2>
+              <p id="qualityScore">0 / 100</p>
+            </div>
+            <div id="checklist" class="checklist"></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-title">
+              <h2>导出</h2>
+              <p id="copyState">等待复制</p>
+            </div>
+            <div class="export-grid">
+              <button id="copyMarkdownBtn" type="button">复制 Markdown</button>
+              <button id="resetBtn" type="button">清空草稿</button>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <template id="wechatTemplate">
+      <div class="wx-cover"></div>
+      <div class="wx-inner">
+        <h1 class="wx-title"></h1>
+        <div class="wx-meta">
+          <span class="wx-origin">原创</span>
+          <span class="wx-author"></span>
+          <span class="wx-account"></span>
+          <span class="wx-date"></span>
+        </div>
+        <p class="wx-summary"></p>
+        <div class="wx-content"></div>
+      </div>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
