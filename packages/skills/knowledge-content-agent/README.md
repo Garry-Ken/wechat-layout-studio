@@ -20,6 +20,12 @@ https://github.com/Garry-Ken/wechat-layout-studio
 
 ### macOS / Linux
 
+Shortest command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Garry-Ken/wechat-layout-studio/main/i.sh|bash
+```
+
 Install for both Codex and Claude Code:
 
 ```bash
@@ -39,6 +45,12 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Garry-Ken/wechat-layout-
 ```
 
 ### Windows PowerShell
+
+Shortest command:
+
+```powershell
+irm https://raw.githubusercontent.com/Garry-Ken/wechat-layout-studio/main/i.ps1|iex
+```
 
 Install for both Codex and Claude Code:
 
