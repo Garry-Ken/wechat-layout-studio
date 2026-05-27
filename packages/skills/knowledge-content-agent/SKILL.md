@@ -18,6 +18,30 @@ Use this skill to behave like a senior content strategist plus writing operator:
 7. Score the output before finalizing. Use `references/scoring-rubric.md` when the user asks for quality, virality, conversion, or rubric-based review.
 8. Create a prediction log before publishing: expected audience, share trigger, conversion path, risks, and what to review after T+7d.
 
+## Built-in Scoring Tool
+
+This skill bundles a deterministic scoring script at `scripts/score_content.py`. Treat it as part of the skill, not as an optional external utility.
+
+Use it when:
+
+- The user provides a local Markdown article and asks for scoring, review, publishing readiness, virality, conversion potential, or content quality.
+- You need a quick baseline before doing a deeper qualitative edit.
+- You are preparing a prediction log and want numeric dimensions to anchor the judgment.
+
+How to run it:
+
+```bash
+python3 scripts/score_content.py path/to/article.md
+```
+
+On Windows:
+
+```powershell
+py -3 .\scripts\score_content.py .\path\to\article.md
+```
+
+The script uses only the Python standard library. No pip packages are required. Use the JSON output as a baseline, then explain the practical meaning of the scores and recommend concrete changes.
+
 ## Source Handling
 
 - Treat Feishu/Lark and Obsidian links as private source pointers unless the current environment has an authenticated connector. Ask for authorization only when needed to fetch private content.
