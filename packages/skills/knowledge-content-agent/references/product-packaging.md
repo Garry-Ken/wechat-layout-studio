@@ -1,10 +1,11 @@
 # Product Packaging Notes
 
-## Product Lines
+## MVP Product Lines
 
-1. Self-serve writing workspace: material inbox, topic input, knowledge retrieval, article generation, scoring, WeChat layout, and image-card export.
-2. Creator pro workspace: article plus video script plus social variants for Douyin, YouTube, X/Twitter, and WeChat Moments.
-3. Custom content production system: client-owned Feishu/Lark, Obsidian, industry monitoring, scoring, approval flow, publishing draft, and analytics review.
+1. Article acquisition MVP: material inbox, topic input, knowledge retrieval, article generation, scoring, WeChat layout, rich-text copy, and image-card export.
+2. Video distribution MVP: Douyin/Video Account short script, YouTube outline, X/Twitter thread, WeChat Moments copy, image-card copy, and publishing prediction.
+
+Custom delivery is not a third generic product. It is a paid implementation of the two MVPs against the client's own Feishu/Lark, Obsidian, monitoring sources, approval flow, and channel requirements.
 
 ## Pricing Logic
 

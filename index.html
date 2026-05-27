@@ -103,7 +103,11 @@
           <section class="control-section agent-section">
             <div class="section-title">
               <h2>知识写作 Agent</h2>
-              <p>主题 -> 选材 -> 重组 -> 评分</p>
+              <p id="productHint">文章获客：主题 -> 选材 -> 文章 -> 评分</p>
+            </div>
+            <div class="product-switch" role="group" aria-label="产品模式">
+              <button class="active" data-product-mode="article" type="button">文章获客</button>
+              <button data-product-mode="video" type="button">视频分发</button>
             </div>
             <div class="agent-form">
               <label>
@@ -144,7 +148,7 @@
               <div id="sourceStatus" class="source-status">支持粘贴图片到页面，图片会进入素材池。</div>
               <div id="imageGallery" class="image-gallery"></div>
               <div class="agent-actions">
-                <button id="generateAgentBtn" class="primary-btn" type="button">生成新文章</button>
+                <button id="generateAgentBtn" class="primary-btn" type="button">生成获客文章</button>
                 <button id="sampleAgentBtn" class="ghost-btn" type="button">填充样例</button>
               </div>
             </div>

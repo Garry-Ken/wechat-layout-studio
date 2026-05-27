@@ -68,6 +68,7 @@ GitHub Pages 推荐设置：
 - 查看 [内容评分与校准系统](./docs/content-scoring-system.md)，参考 `cheat-on-content` 的“打分 -> 盲预测 -> 发布 -> 复盘 -> 升级 rubric”闭环，改造成公众号知识库文章评分。
 - 查看 [自动化公众号内容生产线蓝图](./docs/automation-blueprint.md)，里面拆了 Obsidian、飞书、热点抓取、AI 写作、公众号草稿和手机确认发布流程。
 - 查看 [产品化与定价方案](./docs/productization-and-pricing.md)，里面拆了自助版、Pro 版、3 万/5 万定制交付、视频脚本和图片卡片。
+- 查看 [两个最小 MVP 产品](./docs/two-mvp-products.md)，当前只保留文章获客和视频分发两条产品线。
 - 查看 [Knowledge Content Agent Skill](./packages/skills/knowledge-content-agent/SKILL.md)，这是可分发到 Codex/Claude Code/其他 Agent 工具的内容生产 Skill 初版。
 - 接入图床上传，把本地图片和外链图片转成稳定 URL。
 - 增加 AI 标题、摘要、结构和口吻优化。

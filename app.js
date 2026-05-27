@@ -163,6 +163,7 @@ const defaultState = {
   agentTopic: "AI 企业知识库为什么会成为中小企业刚需",
   agentReader: "中小企业老板、销售负责人、交付负责人",
   agentBusiness: "AI 企业知识库服务",
+  productMode: "article",
   agentObsidian: "",
   agentLark: "",
   agentTrends: "",
@@ -207,6 +208,8 @@ const els = {
   imageGallery: document.querySelector("#imageGallery"),
   pipelinePanel: document.querySelector("#pipelinePanel"),
   scorePanel: document.querySelector("#scorePanel"),
+  productHint: document.querySelector("#productHint"),
+  generateAgentBtn: document.querySelector("#generateAgentBtn"),
 };
 
 let state = loadState();
@@ -278,6 +281,16 @@ function bindEvents() {
   document.querySelectorAll("[data-width]").forEach((button) => {
     button.addEventListener("click", () => {
       state.width = button.dataset.width;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-product-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.productMode = button.dataset.productMode;
+      state.pipeline = [];
+      state.lastScore = null;
+      state.predictionLog = "";
       render();
     });
   });
@@ -377,7 +390,17 @@ function render() {
   renderSourceAssets();
   renderPipelinePanel();
   renderScorePanel();
+  renderProductMode();
   persistSoon();
+}
+
+function renderProductMode() {
+  const isVideo = state.productMode === "video";
+  document.querySelectorAll("[data-product-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.productMode === state.productMode);
+  });
+  els.productHint.textContent = isVideo ? "视频分发：主题 -> 选材 -> 脚本 -> 多平台" : "文章获客：主题 -> 选材 -> 文章 -> 评分";
+  els.generateAgentBtn.textContent = isVideo ? "生成脚本包" : "生成获客文章";
 }
 
 function currentTheme() {
@@ -1060,7 +1083,7 @@ function generateAgentArticle() {
     fillAgentSample();
   }
 
-  const result = composeKnowledgeArticle({
+  const input = {
     topic: state.agentTopic,
     reader: state.agentReader,
     business: state.agentBusiness,
@@ -1070,7 +1093,8 @@ function generateAgentArticle() {
     sourceLinks: state.sourceLinks,
     uploadedSources: state.uploadedSources,
     sourceImages: state.sourceImages,
-  });
+  };
+  const result = state.productMode === "video" ? composeVideoDistributionPackage(input) : composeKnowledgeArticle(input);
 
   state.title = result.title;
   state.summary = result.summary;
@@ -1080,7 +1104,7 @@ function generateAgentArticle() {
   updatePipeline(result);
   hydrateInputs();
   render();
-  setCopyState("已生成知识库文章和预测评分");
+  setCopyState(state.productMode === "video" ? "已生成视频分发脚本包" : "已生成知识库文章和预测评分");
 }
 
 function hasAgentSources() {
@@ -1164,7 +1188,52 @@ function composeKnowledgeArticle(input) {
 
   const summary = inferSummary(markdown);
   const predictionLog = buildPredictionLog({ topic, reader, business, title, score, selected, coreClaim });
-  return { title, summary, markdown, score, predictionLog };
+  return { mode: "article", title, summary, markdown, score, predictionLog };
+}
+
+function composeVideoDistributionPackage(input) {
+  const topic = input.topic.trim();
+  const reader = input.reader.trim() || "目标读者";
+  const business = input.business.trim() || "主线业务";
+  const sources = collectSourceBlocks(input);
+  const keywords = extractKeywords(`${topic} ${reader} ${business} 视频 脚本 传播`);
+  const selected = sources.map((source) => scoreSourceBlock(source, keywords, business)).sort((a, b) => b.score - a.score).slice(0, 8);
+  const coreClaim = buildCoreClaim(topic, business, selected);
+  const title = `${topic}：短视频怎么讲才有人找你`;
+  const actionList = buildVideoActionList(business, selected);
+  const score = scoreKnowledgeArticle({
+    topic,
+    reader,
+    business,
+    selected,
+    title,
+    coreClaim,
+    actionList,
+  });
+  const hook = buildVideoHook(topic, reader, coreClaim);
+
+  const markdown = [
+    `> ${hook}`,
+    "## 抖音 / 视频号 60 秒口播",
+    buildDouyinScript(topic, business, coreClaim, selected),
+    "## YouTube 8 分钟结构",
+    buildYouTubePlan(topic, business, selected),
+    "## X / Twitter Thread",
+    buildTwitterThread(topic, business, coreClaim, selected),
+    "## 朋友圈文案",
+    buildMomentsCopy(topic, business, coreClaim),
+    "## 图片卡文案",
+    buildImageCardCopy(topic, business, selected),
+    "## 拍摄和发布清单",
+    actionList.map((item) => `- ${item}`).join("\n"),
+    ":::note 发布前预测",
+    `传播分：${score.virality.toFixed(1)} / 10；获客分：${score.conversion.toFixed(1)} / 10；综合分：${score.composite.toFixed(1)} / 10。`,
+    ":::",
+  ].join("\n\n");
+
+  const summary = `围绕“${topic}”生成抖音/视频号口播、YouTube 结构、X Thread、朋友圈文案和图片卡文案。`;
+  const predictionLog = buildVideoPredictionLog({ topic, reader, business, title, score, selected, coreClaim });
+  return { mode: "video", title, summary, markdown, score, predictionLog };
 }
 
 function collectSourceBlocks(input) {
@@ -1414,14 +1483,22 @@ function renderSourceAssets() {
 function renderPipelinePanel() {
   const steps = state.pipeline?.length
     ? state.pipeline
-    : [
-        "Source Agent：接入文档、图片、链接和私有知识源",
-        "Knowledge Agent：从素材中召回业务经验和案例",
-        "Trend Agent：补充最新 AI 产品和行业变化",
-        "Writing Agent：重组观点并生成文章",
-        "Scoring Agent：给传播分、获客分和预测日志",
-        "Publish Agent：排版、草稿箱和手机确认",
-      ];
+    : state.productMode === "video"
+      ? [
+          "Source Agent：接入文档、图片、链接和私有知识源",
+          "Knowledge Agent：召回案例、判断和可讲述素材",
+          "Script Agent：生成短视频、长视频和社交分发包",
+          "Scoring Agent：评估传播、获客和多平台适配",
+          "Asset Agent：导出图片卡，后续接封面和字幕",
+        ]
+      : [
+          "Source Agent：接入文档、图片、链接和私有知识源",
+          "Knowledge Agent：从素材中召回业务经验和案例",
+          "Trend Agent：补充最新 AI 产品和行业变化",
+          "Writing Agent：重组观点并生成文章",
+          "Scoring Agent：给传播分、获客分和预测日志",
+          "Publish Agent：排版、草稿箱和手机确认",
+        ];
   els.pipelinePanel.innerHTML = steps
     .map((step, index) => `<div class="pipeline-step"><i>${index + 1}</i><span>${escapeHtml(step)}</span></div>`)
     .join("");
@@ -1430,14 +1507,24 @@ function renderPipelinePanel() {
 function updatePipeline(result) {
   const sourceCount = (state.uploadedSources || []).length + parseLinks(state.sourceLinks).length;
   const imageCount = (state.sourceImages || []).length;
-  state.pipeline = [
+  const base = [
     `Source Agent：接入 ${sourceCount} 条链接/文档线索、${imageCount} 张图片`,
     `Knowledge Agent：筛选 ${result.score.selectedSources.length} 条高相关素材`,
-    "Trend Agent：补充趋势、产品和竞品信号",
-    `Writing Agent：围绕“${result.title}”生成新文章`,
-    `Scoring Agent：传播分 ${result.score.virality.toFixed(1)}，获客分 ${result.score.conversion.toFixed(1)}`,
-    "Publish Agent：已进入排版预览，可复制富文本或后续创建公众号草稿",
   ];
+  state.pipeline = result.mode === "video"
+    ? [
+        ...base,
+        `Script Agent：围绕“${result.title}”生成 5 件分发素材`,
+        `Scoring Agent：传播分 ${result.score.virality.toFixed(1)}，获客分 ${result.score.conversion.toFixed(1)}`,
+        "Asset Agent：可下载图片卡，后续接封面图、字幕和平台发布",
+      ]
+    : [
+        ...base,
+        "Trend Agent：补充趋势、产品和竞品信号",
+        `Writing Agent：围绕“${result.title}”生成新文章`,
+        `Scoring Agent：传播分 ${result.score.virality.toFixed(1)}，获客分 ${result.score.conversion.toFixed(1)}`,
+        "Publish Agent：已进入排版预览，可复制富文本或后续创建公众号草稿",
+      ];
 }
 
 function buildTrendSection(trends, topic) {
@@ -1485,6 +1572,76 @@ function buildActionList(business, selected) {
 
 function buildCommercialSection(business, reader) {
   return `对 ${reader} 来说，${business} 最容易被低估的地方，是它不只是一个内部效率工具。它还能变成销售训练、交付一致性、客户成功和内容获客的共同底座。\n\n所以判断一家公司要不要做，不要先问“有没有 AI 预算”，先问三个问题：客户问题是否重复出现？团队回答是否不一致？优秀经验是否只存在少数人脑子里？如果答案都是是，这件事就已经值得启动。`;
+}
+
+function buildVideoHook(topic, reader, coreClaim) {
+  return `如果你是${reader}，今天这个话题不要从“工具又更新了”开始讲。先讲清楚一个判断：${coreClaim}`;
+}
+
+function buildDouyinScript(topic, business, coreClaim, selected) {
+  const proof = selected.find((item) => /客户|销售|交付|会议|复盘|案例|\d+/.test(item.text));
+  const proofLine = proof ? summarizeText(proof.text, 74) : `很多人聊 ${topic}，但真正能转化的内容必须落到一个具体业务场景。`;
+  return [
+    "- **0-3 秒**：别再把它当成一个新工具新闻看，真正的机会在业务流程里。",
+    `- **3-15 秒**：${coreClaim}`,
+    `- **15-35 秒**：举个具体场景：${proofLine}`,
+    `- **35-50 秒**：如果你做 ${business}，先不要追大而全系统，先把客户问题、案例证据、交付动作做成可复用内容。`,
+    "- **50-60 秒**：想看我怎么把这个流程拆成文章和脚本，评论区留一个“知识库”。",
+  ].join("\n");
+}
+
+function buildYouTubePlan(topic, business, selected) {
+  const evidence = selected.slice(0, 3).map((item) => `- ${item.source}：${summarizeText(item.text, 72)}`).join("\n");
+  return [
+    `- **标题**：${topic}，为什么不是工具问题，而是内容获客系统问题？`,
+    "- **缩略图文案**：别追热点，追可复用判断",
+    "- **开场 30 秒**：先给结论，再说明为什么这个话题跟获客有关。",
+    "- **主体 1**：拆趋势，不讲新闻流水账。",
+    "- **主体 2**：拆自己的客户/交付/销售案例。",
+    "- **主体 3**：给一个可复制的执行路径。",
+    `- **CTA**：如果你也想把私有知识变成 ${business} 的获客内容，可以带着一个主题来交流。`,
+    evidence ? `\n可用证据：\n${evidence}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+function buildTwitterThread(topic, business, coreClaim, selected) {
+  const proof = selected.slice(0, 3).map((item) => summarizeText(item.text, 62));
+  return [
+    `1/ ${topic} 不能只当热点看。${coreClaim}`,
+    `2/ 对 ${business} 来说，最值钱的是把私有经验变成可重复表达的观点。`,
+    `3/ 证据一：${proof[0] || "客户真正关心的是结果，而不是工具名字。"}`,
+    `4/ 证据二：${proof[1] || "能转化的内容往往来自真实业务摩擦。"}`,
+    `5/ 做法：主题 -> 私有知识召回 -> 外部趋势补充 -> 新判断 -> 多平台改写 -> 评分复盘。`,
+    `6/ 如果你也在做 ${business}，先从一个高频客户问题开始，不要从大而全内容库开始。`,
+  ].join("\n\n");
+}
+
+function buildMomentsCopy(topic, business, coreClaim) {
+  return `今天看到 ${topic}，我反而更确定一件事：\n\n${coreClaim}\n\n对做 ${business} 的人来说，内容不是每天追热点，而是把客户问题、交付复盘和行业变化重新组合成有用判断。这个方向我会继续拆。`;
+}
+
+function buildImageCardCopy(topic, business, selected) {
+  const first = selected[0] ? summarizeText(selected[0].text, 42) : "把热点变成自己的判断";
+  return [
+    `- **主标题**：${topic}`,
+    "- **副标题**：不要追热点，要提炼可复用判断",
+    `- **要点 1**：${first}`,
+    `- **要点 2**：围绕 ${business} 的真实客户问题重组内容`,
+    "- **要点 3**：一篇文章、一条视频、一张图卡同步生成",
+    "- **CTA**：带一个主题来，我帮你拆成内容资产",
+  ].join("\n");
+}
+
+function buildVideoActionList(business, selected) {
+  const list = [
+    "先定一个 60 秒短视频钩子，只讲一个冲突。",
+    "从素材里挑 1 个真实案例或客户问题，不要堆概念。",
+    "把同一个判断拆成口播、长视频结构、Thread、朋友圈和图片卡。",
+    "每条内容只放一个 CTA，导向咨询或主题共创。",
+    "发布后记录完播、收藏、评论关键词和咨询线索。",
+  ];
+  if (selected.some((item) => /截图|图片|封面/.test(item.text))) list.splice(3, 0, "把可视化素材优先做成封面或图卡，不要只放进正文。");
+  return list;
 }
 
 function scoreKnowledgeArticle(input) {
@@ -1577,6 +1734,57 @@ ${sourceRows || "- 暂无素材"}
 发布后 T+7d 复盘阅读、分享、收藏、评论关键词和咨询线索。`;
 }
 
+function buildVideoPredictionLog(input) {
+  const score = input.score;
+  const sourceRows = score.selectedSources
+    .map((item) => `- ${item.source} / ${item.title}：${summarizeText(item.text, 80)}`)
+    .join("\n");
+  return `# ${input.title} — 视频分发预测
+
+**Package ID**: ${hashText(input.title + input.topic)}
+**Theme**: ${input.topic}
+**Target Reader**: ${input.reader}
+**Business Line**: ${input.business}
+**Rubric Version**: video-mvp-v0
+**Prediction Time**: ${formatDate(new Date())}
+**Data Status**: blind
+
+## 输出包
+
+- 抖音 / 视频号 60 秒口播
+- YouTube 8 分钟结构
+- X / Twitter Thread
+- 朋友圈文案
+- 图片卡文案
+
+## 评分
+
+传播分：${score.virality.toFixed(1)}
+获客分：${score.conversion.toFixed(1)}
+综合分：${score.composite.toFixed(1)}
+
+## 预测
+
+- 预期表现：${score.prediction.bucket}
+- 分享冲动：${score.prediction.share}
+- 获客判断：${score.prediction.leads}
+- 内容定位：${score.prediction.focus}
+
+## 核心判断
+
+> ${input.coreClaim}
+
+## 使用素材
+
+${sourceRows || "- 暂无素材"}
+
+## 关键校准假设
+
+如果短视频完播高但咨询低，说明钩子有效但 CTA 或业务承接弱。
+如果 YouTube 收藏高，说明长结构有用，可以扩展成系列。
+如果朋友圈互动高，优先把该主题改成案例型文章。`;
+}
+
 function dimensionReason(key, score) {
   const sourceCount = score.selectedSources.length;
   const sourceTypes = new Set(score.selectedSources.map((item) => item.source)).size;
@@ -1595,7 +1803,8 @@ function dimensionReason(key, score) {
 
 function renderScorePanel() {
   if (!state.lastScore) {
-    els.scorePanel.innerHTML = `<div class="score-panel-empty">生成文章后显示传播分、获客分和 8 维评分。</div>`;
+    const label = state.productMode === "video" ? "脚本包" : "文章";
+    els.scorePanel.innerHTML = `<div class="score-panel-empty">生成${label}后显示传播分、获客分和 8 维评分。</div>`;
     return;
   }
   const score = state.lastScore;
