@@ -1,5 +1,16 @@
 const STORAGE_KEY = "wechat-layout-studio-state-v1";
 
+const DIMENSIONS = [
+  ["TS", "主题势能"],
+  ["KA", "知识适配"],
+  ["IG", "信息增量"],
+  ["UV", "读者可用"],
+  ["SC", "传播冲动"],
+  ["CV", "商业承接"],
+  ["SN", "结构叙事"],
+  ["CE", "可信证据"],
+];
+
 const themes = [
   {
     id: "redline",
@@ -149,6 +160,14 @@ const defaultState = {
   lineHeight: 1.8,
   paragraphGap: 20,
   width: "phone",
+  agentTopic: "AI 企业知识库为什么会成为中小企业刚需",
+  agentReader: "中小企业老板、销售负责人、交付负责人",
+  agentBusiness: "AI 企业知识库服务",
+  agentObsidian: "",
+  agentLark: "",
+  agentTrends: "",
+  lastScore: null,
+  predictionLog: "",
 };
 
 const els = {
@@ -172,6 +191,13 @@ const els = {
   fontSizeValue: document.querySelector("#fontSizeValue"),
   lineHeightValue: document.querySelector("#lineHeightValue"),
   paragraphGapValue: document.querySelector("#paragraphGapValue"),
+  topic: document.querySelector("#topicInput"),
+  reader: document.querySelector("#readerInput"),
+  business: document.querySelector("#businessInput"),
+  obsidian: document.querySelector("#obsidianInput"),
+  lark: document.querySelector("#larkInput"),
+  trends: document.querySelector("#trendInput"),
+  scorePanel: document.querySelector("#scorePanel"),
 };
 
 let state = loadState();
@@ -206,6 +232,12 @@ function hydrateInputs() {
   els.fontSize.value = state.fontSize;
   els.lineHeight.value = state.lineHeight;
   els.paragraphGap.value = state.paragraphGap;
+  els.topic.value = state.agentTopic;
+  els.reader.value = state.agentReader;
+  els.business.value = state.agentBusiness;
+  els.obsidian.value = state.agentObsidian;
+  els.lark.value = state.agentLark;
+  els.trends.value = state.agentTrends;
 }
 
 function bindEvents() {
@@ -219,6 +251,12 @@ function bindEvents() {
     ["input", els.fontSize, "fontSize"],
     ["input", els.lineHeight, "lineHeight"],
     ["input", els.paragraphGap, "paragraphGap"],
+    ["input", els.topic, "agentTopic"],
+    ["input", els.reader, "agentReader"],
+    ["input", els.business, "agentBusiness"],
+    ["input", els.obsidian, "agentObsidian"],
+    ["input", els.lark, "agentLark"],
+    ["input", els.trends, "agentTrends"],
   ].forEach(([eventName, element, key]) => {
     element.addEventListener(eventName, () => {
       state[key] = element.type === "range" ? Number(element.value) : element.value;
@@ -249,6 +287,11 @@ function bindEvents() {
   document.querySelector("#cleanPasteBtn").addEventListener("click", cleanClipboardPaste);
   document.querySelector("#autoFormatBtn").addEventListener("click", autoFormatDraft);
   document.querySelector("#formatInlineBtn").addEventListener("click", autoFormatDraft);
+  document.querySelector("#generateAgentBtn").addEventListener("click", generateAgentArticle);
+  document.querySelector("#generateAgentBtnTop").addEventListener("click", generateAgentArticle);
+  document.querySelector("#sampleAgentBtn").addEventListener("click", fillAgentSample);
+  document.querySelector("#copyPredictionBtn").addEventListener("click", copyPredictionLog);
+  document.querySelector("#downloadPredictionBtn").addEventListener("click", downloadPredictionLog);
   document.querySelector("#resetBtn").addEventListener("click", resetDraft);
 }
 
@@ -315,6 +358,7 @@ function render() {
   lastArticleHtml = buildCopyHtml(contentHtml, theme);
   renderStats();
   renderChecklist();
+  renderScorePanel();
   persistSoon();
 }
 
@@ -858,6 +902,406 @@ function emphasizeBusinessTerms(text) {
   return text
     .replace(/(AI企业知识库服务|AI 企业知识库服务|企业知识库|知识库服务|获客|销售转化|交付效率|客户问题)/g, "**$1**")
     .replace(/(Claude Code|ChatGPT|Gemini|OpenAI|飞书|Obsidian)/g, "**$1**");
+}
+
+function generateAgentArticle() {
+  const topic = state.agentTopic.trim();
+  if (!topic) {
+    setCopyState("先输入一个主题");
+    return;
+  }
+
+  if (!hasAgentSources()) {
+    fillAgentSample();
+  }
+
+  const result = composeKnowledgeArticle({
+    topic: state.agentTopic,
+    reader: state.agentReader,
+    business: state.agentBusiness,
+    obsidian: state.agentObsidian,
+    lark: state.agentLark,
+    trends: state.agentTrends,
+  });
+
+  state.title = result.title;
+  state.summary = result.summary;
+  state.markdown = result.markdown;
+  state.lastScore = result.score;
+  state.predictionLog = result.predictionLog;
+  hydrateInputs();
+  render();
+  setCopyState("已生成知识库文章和预测评分");
+}
+
+function hasAgentSources() {
+  return [state.agentObsidian, state.agentLark, state.agentTrends].some((value) => value.trim().length > 20);
+}
+
+function fillAgentSample() {
+  state.agentTopic = state.agentTopic || "AI 企业知识库为什么会成为中小企业刚需";
+  state.agentReader = state.agentReader || "中小企业老板、销售负责人、交付负责人";
+  state.agentBusiness = state.agentBusiness || "AI 企业知识库服务";
+  state.agentObsidian = `# 客户问题库
+销售新人最常问的问题不是产品功能，而是客户追问时不知道怎么接。过去靠老销售口头带新人，经验无法复用。
+
+# 交付复盘
+每次交付都会重复解释同一批资料：权限边界、数据来源、知识更新责任人。真正浪费时间的是找不到上一轮已经验证过的答案。
+
+# 方法论
+企业知识库不是资料仓库，而是把高频问题、最佳回答、案例证据和交付动作做成可复用的业务系统。`;
+  state.agentLark = `飞书会议纪要：某制造业客户销售团队有 18 人，新人上手周期 45 天。老板关心的不是 AI 多炫，而是客户问到价格、交付周期、售后边界时，团队回答是否一致。
+
+方案草稿：第一阶段不做大而全知识库，先做客户问题库、销售话术库、交付 SOP 三个库。每个库都要有责任人和更新节奏。
+
+销售话术：如果知识库不能缩短找答案时间，它就只是另一个文档系统。`;
+  state.agentTrends = `外部趋势：越来越多 AI 产品开始强调企业内部知识连接、RAG、Agent 工作流和权限管理。单点工具正在变便宜，企业真正缺的是把经验接入业务流程。
+
+产品观察：不少团队尝试直接上通用 Agent，但失败原因常常不是模型不够强，而是内部知识没有结构化、没有版本、没有责任人。
+
+市场信号：中小企业对 AI 预算谨慎，更愿意先买能提升销售转化、客服效率、交付一致性的场景方案。`;
+  hydrateInputs();
+  render();
+  setCopyState("已填充知识写作样例");
+}
+
+function composeKnowledgeArticle(input) {
+  const topic = input.topic.trim();
+  const reader = input.reader.trim() || "目标读者";
+  const business = input.business.trim() || "主线业务";
+  const sources = collectSourceBlocks(input);
+  const keywords = extractKeywords(`${topic} ${reader} ${business}`);
+  const ranked = sources.map((source) => scoreSourceBlock(source, keywords, business)).sort((a, b) => b.score - a.score);
+  const selected = ranked.slice(0, 8);
+  const obsidian = selected.filter((item) => item.source === "Obsidian");
+  const lark = selected.filter((item) => item.source === "飞书");
+  const trends = selected.filter((item) => item.source === "趋势");
+  const coreClaim = buildCoreClaim(topic, business, selected);
+  const title = buildAgentTitle(topic, business, selected);
+  const actionList = buildActionList(business, selected);
+  const score = scoreKnowledgeArticle({
+    topic,
+    reader,
+    business,
+    selected,
+    title,
+    coreClaim,
+    actionList,
+  });
+
+  const markdown = [
+    `> ${coreClaim}`,
+    buildOpening(topic, reader, selected),
+    "## 为什么现在值得写？",
+    buildTrendSection(trends, topic),
+    "## 你的知识库里真正有价值的部分",
+    buildKnowledgeSection(obsidian, lark, business),
+    "## 重新组合后的判断",
+    buildSynthesisSection(topic, business, selected),
+    "## 可以直接照着做的路径",
+    actionList.map((item) => `- ${item}`).join("\n"),
+    "## 这和业务有什么关系？",
+    buildCommercialSection(business, reader),
+    ":::note 发布前预测",
+    `传播分：${score.virality.toFixed(1)} / 10；获客分：${score.conversion.toFixed(1)} / 10；综合分：${score.composite.toFixed(1)} / 10。`,
+    ":::",
+    "---",
+    `如果你也在思考 ${business} 怎么落地，可以把你现在最头疼的资料、销售或交付场景发给我。我会用具体场景来拆，而不是泛泛聊 AI。`,
+  ].join("\n\n");
+
+  const summary = inferSummary(markdown);
+  const predictionLog = buildPredictionLog({ topic, reader, business, title, score, selected, coreClaim });
+  return { title, summary, markdown, score, predictionLog };
+}
+
+function collectSourceBlocks(input) {
+  return [
+    ...splitSourceText(input.obsidian, "Obsidian"),
+    ...splitSourceText(input.lark, "飞书"),
+    ...splitSourceText(input.trends, "趋势"),
+  ];
+}
+
+function splitSourceText(text, source) {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}|(?=^#{1,3}\s+)/gm)
+    .map((block) => block.replace(/^#{1,3}\s*/, "").trim())
+    .filter((block) => block.length > 12)
+    .map((block, index) => ({
+      id: `${source}-${index + 1}`,
+      source,
+      text: block,
+      title: inferBlockTitle(block),
+    }));
+}
+
+function inferBlockTitle(block) {
+  const first = block.split("\n").map((line) => line.trim()).find(Boolean) || "";
+  return first.replace(/[。！？!?].*$/, "").slice(0, 28) || "素材";
+}
+
+function extractKeywords(text) {
+  const cleaned = text
+    .replace(/[，。！？、；：,.!?;:()[\]{}"']/g, " ")
+    .split(/\s+/)
+    .flatMap((part) => part.split(/(?=[A-Z][a-z])|(?<=知识库)|(?<=AI)|(?<=企业)|(?<=销售)|(?<=交付)/))
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 2);
+  return [...new Set([...cleaned, "AI", "知识库", "企业", "销售", "交付", "客户", "效率", "获客"])];
+}
+
+function scoreSourceBlock(source, keywords, business) {
+  const text = source.text;
+  const keywordHits = keywords.filter((keyword) => text.includes(keyword)).length;
+  const businessHits = ["知识库", "客户", "销售", "交付", "效率", "话术", "SOP", "Agent", "RAG", "获客"].filter((keyword) => text.includes(keyword)).length;
+  const specificity = Math.min(5, (text.match(/\d+|阶段|问题|案例|客户|会议|复盘|方案/g) || []).length);
+  const sourceWeight = source.source === "飞书" ? 2 : source.source === "Obsidian" ? 1.5 : 1.2;
+  return {
+    ...source,
+    score: keywordHits * 1.1 + businessHits * 1.5 + specificity + sourceWeight + (text.includes(business) ? 3 : 0),
+    keywordHits,
+    businessHits,
+  };
+}
+
+function buildCoreClaim(topic, business, selected) {
+  const hasSales = selected.some((item) => /销售|客户|话术|转化/.test(item.text));
+  const hasDelivery = selected.some((item) => /交付|SOP|复盘|一致/.test(item.text));
+  if (hasSales && hasDelivery) {
+    return `${topic}的关键，不是再买一个更炫的 AI 工具，而是把销售、交付和客户问题里的高频经验变成可复用的 ${business}。`;
+  }
+  return `${topic}的关键，不是资料越多越好，而是让组织在需要答案的时候，更快拿到已经被验证过的判断。`;
+}
+
+function buildAgentTitle(topic, business, selected) {
+  const hasPain = selected.some((item) => /新人|重复|找不到|不一致|浪费/.test(item.text));
+  if (hasPain) return `${topic}：不是缺工具，而是缺可复用经验`;
+  if (topic.length <= 28) return `${topic}，真正的机会在哪里？`;
+  return `${business} 的下一波机会：${topic.slice(0, 18)}`;
+}
+
+function buildOpening(topic, reader, selected) {
+  const pain = selected.find((item) => /新人|重复|找不到|不一致|浪费|老板|客户/.test(item.text));
+  const detail = pain ? summarizeText(pain.text, 86) : `如果你是${reader}，这个问题大概率已经不只是技术问题，而是业务效率问题。`;
+  return `这篇先不泛泛聊 ${topic}。我更关心一个具体问题：${detail}`;
+}
+
+function buildTrendSection(trends, topic) {
+  if (!trends.length) {
+    return `外部趋势给了一个提醒：${topic} 不能只从工具角度理解。工具会越来越便宜，真正稀缺的是企业内部可复用的业务知识。`;
+  }
+  return trends
+    .slice(0, 3)
+    .map((item) => `- **${item.title}**：${summarizeText(item.text, 88)}`)
+    .join("\n");
+}
+
+function buildKnowledgeSection(obsidian, lark, business) {
+  const items = [...obsidian.slice(0, 3), ...lark.slice(0, 3)];
+  if (!items.length) {
+    return `要写好这类文章，必须从自己的 ${business} 经验里拿材料：客户问过什么、销售卡在哪里、交付重复解释什么。没有这些，文章就会变成普通趋势评论。`;
+  }
+  return items.map((item) => `- **${item.source} / ${item.title}**：${summarizeText(item.text, 92)}`).join("\n");
+}
+
+function buildSynthesisSection(topic, business, selected) {
+  const fragments = [
+    `第一，${topic} 不是一个“资料整理”问题，而是一个“业务答案复用”问题。`,
+    `第二，${business} 的落点应该从高频业务场景开始，而不是从大而全平台开始。`,
+    `第三，真正能获客的内容，要把外部趋势和自己的客户经验接起来，让读者看到“这就是我公司正在发生的事”。`,
+  ];
+  if (selected.some((item) => /责任人|更新|版本/.test(item.text))) {
+    fragments.push("第四，知识库必须有责任人和更新节奏，否则它很快会退化成又一个没人看的文档库。");
+  }
+  return fragments.join("\n\n");
+}
+
+function buildActionList(business, selected) {
+  const base = [
+    "先列出最近 30 天客户问得最多的 20 个问题。",
+    "把老销售、交付负责人、客服的最佳回答整理成标准答案。",
+    "每个答案都补上案例、适用边界和下一步动作。",
+    "指定责任人，每周更新一次过期答案。",
+    `最后再接入 AI，让它基于这些已验证内容服务 ${business}。`,
+  ];
+  if (selected.some((item) => /SOP|交付/.test(item.text))) base.splice(3, 0, "把交付 SOP 拆成“触发条件、执行步骤、风险提醒、交付物模板”。");
+  if (selected.some((item) => /话术|销售/.test(item.text))) base.splice(2, 0, "把销售话术按客户阶段分类：初次咨询、方案比较、价格异议、交付顾虑。");
+  return base.slice(0, 6);
+}
+
+function buildCommercialSection(business, reader) {
+  return `对 ${reader} 来说，${business} 最容易被低估的地方，是它不只是一个内部效率工具。它还能变成销售训练、交付一致性、客户成功和内容获客的共同底座。\n\n所以判断一家公司要不要做，不要先问“有没有 AI 预算”，先问三个问题：客户问题是否重复出现？团队回答是否不一致？优秀经验是否只存在少数人脑子里？如果答案都是是，这件事就已经值得启动。`;
+}
+
+function scoreKnowledgeArticle(input) {
+  const text = `${input.topic} ${input.reader} ${input.business} ${input.selected.map((item) => item.text).join(" ")} ${input.coreClaim} ${input.actionList.join(" ")}`;
+  const bySource = new Set(input.selected.map((item) => item.source));
+  const dimensions = {
+    TS: clampScore(1.5 + keywordCount(text, ["趋势", "现在", "AI", "企业", "刚需", "产品", "市场"]) / 2.5),
+    KA: clampScore(1 + bySource.size * 0.8 + Math.min(1.4, input.selected.length / 5)),
+    IG: clampScore(1.5 + keywordCount(text, ["不是", "而是", "真正", "底座", "复用", "判断", "框架"]) / 2.5),
+    UV: clampScore(1.5 + input.actionList.length / 2.2),
+    SC: clampScore(1.2 + keywordCount(`${input.title} ${input.coreClaim}`, ["不是", "而是", "刚需", "缺", "真正", "可复用"]) / 2.4),
+    CV: clampScore(1.8 + keywordCount(text, ["获客", "咨询", "销售", "转化", "服务", "客户", input.business]) / 2.8),
+    SN: clampScore(2.5 + (input.selected.length >= 4 ? 0.8 : 0) + (input.actionList.length >= 4 ? 0.8 : 0)),
+    CE: clampScore(1 + bySource.size * 0.7 + Math.min(1.6, input.selected.filter((item) => /\d+|会议|客户|案例|趋势/.test(item.text)).length / 3)),
+  };
+  const virality = ((dimensions.TS + dimensions.IG + dimensions.SC + dimensions.SN + dimensions.CE) / 5) * 2;
+  const conversion = ((dimensions.KA + dimensions.UV + dimensions.CV + dimensions.CE + dimensions.TS) / 5) * 2;
+  const composite = Object.values(dimensions).reduce((sum, value) => sum + value, 0) / 8 * 2;
+  return {
+    dimensions,
+    virality,
+    conversion,
+    composite,
+    selectedSources: input.selected,
+    prediction: predictOutcome(virality, conversion, composite),
+  };
+}
+
+function keywordCount(text, keywords) {
+  return keywords.filter((keyword) => keyword && text.includes(keyword)).length;
+}
+
+function clampScore(value) {
+  return Math.max(0, Math.min(5, Math.round(value)));
+}
+
+function predictOutcome(virality, conversion, composite) {
+  const bucket = composite >= 8.2 ? "小爆" : composite >= 7 ? "命中" : composite >= 5.6 ? "基础盘" : "待打磨";
+  const share = virality >= 8 ? "高" : virality >= 6.5 ? "中" : "低";
+  const leads = conversion >= 8 ? "2-5 个咨询线索" : conversion >= 6.5 ? "1-2 个咨询线索" : "更适合先做品牌铺垫";
+  const focus = conversion > virality ? "获客优先" : virality > conversion ? "传播优先" : "传播与获客平衡";
+  return { bucket, share, leads, focus };
+}
+
+function buildPredictionLog(input) {
+  const score = input.score;
+  const rows = DIMENSIONS.map(([key, name]) => `| ${key} ${name} | ${score.dimensions[key]} | ${dimensionReason(key, score)} |`).join("\n");
+  const sourceRows = score.selectedSources
+    .map((item) => `- ${item.source} / ${item.title}：${summarizeText(item.text, 80)}`)
+    .join("\n");
+  return `# ${input.title} — 内容预测
+
+**Article ID**: ${hashText(input.title + input.topic)}
+**Theme**: ${input.topic}
+**Target Reader**: ${input.reader}
+**Business Line**: ${input.business}
+**Rubric Version**: article-v0
+**Prediction Time**: ${formatDate(new Date())}
+**Data Status**: blind
+
+## 评分
+
+| 维度 | 分 | 理由 |
+|---|---:|---|
+${rows}
+
+传播分：${score.virality.toFixed(1)}
+获客分：${score.conversion.toFixed(1)}
+综合分：${score.composite.toFixed(1)}
+
+## 预测
+
+- 预期表现：${score.prediction.bucket}
+- 分享冲动：${score.prediction.share}
+- 获客判断：${score.prediction.leads}
+- 内容定位：${score.prediction.focus}
+
+## 核心判断
+
+> ${input.coreClaim}
+
+## 使用素材
+
+${sourceRows || "- 暂无素材"}
+
+## 关键校准假设
+
+如果这篇阅读一般但咨询高，说明 CV/UV 比 SC 更能预测业务价值。
+如果阅读高但咨询低，说明主题有传播性，但商业承接仍需重写。
+发布后 T+7d 复盘阅读、分享、收藏、评论关键词和咨询线索。`;
+}
+
+function dimensionReason(key, score) {
+  const sourceCount = score.selectedSources.length;
+  const sourceTypes = new Set(score.selectedSources.map((item) => item.source)).size;
+  const reasons = {
+    TS: "主题连接 AI 趋势、企业痛点和业务主线",
+    KA: `调用 ${sourceTypes} 类来源、${sourceCount} 条素材`,
+    IG: "形成了“不是工具，而是经验复用”的新判断",
+    UV: "给出可执行步骤和落地路径",
+    SC: "标题和核心判断具备反常识表达",
+    CV: "自然导向 AI 企业知识库服务咨询",
+    SN: "按现象、知识、判断、行动、承接组织",
+    CE: "组合内部经验与外部趋势作为证据",
+  };
+  return reasons[key] || "已评分";
+}
+
+function renderScorePanel() {
+  if (!state.lastScore) {
+    els.scorePanel.innerHTML = `<div class="score-panel-empty">生成文章后显示传播分、获客分和 8 维评分。</div>`;
+    return;
+  }
+  const score = state.lastScore;
+  const dimensions = DIMENSIONS.map(([key, name]) => {
+    const value = score.dimensions[key] || 0;
+    return `<div class="dimension-row">
+      <span>${key}</span>
+      <span class="dimension-bar"><i style="width:${value * 20}%"></i></span>
+      <b>${value}</b>
+    </div>`;
+  }).join("");
+  const sources = (score.selectedSources || [])
+    .slice(0, 4)
+    .map((item) => `<li><b>${escapeHtml(item.source)}</b> ${escapeHtml(item.title)}：${escapeHtml(summarizeText(item.text, 42))}</li>`)
+    .join("");
+  els.scorePanel.innerHTML = `<div class="score-summary">
+    <div class="score-pill"><span>传播分</span><strong>${score.virality.toFixed(1)}</strong></div>
+    <div class="score-pill"><span>获客分</span><strong>${score.conversion.toFixed(1)}</strong></div>
+    <div class="score-pill"><span>综合</span><strong>${score.composite.toFixed(1)}</strong></div>
+  </div>
+  <div class="dimension-grid">${dimensions}</div>
+  <ul class="source-list">${sources || "<li>暂无入选素材</li>"}</ul>`;
+}
+
+async function copyPredictionLog() {
+  if (!state.predictionLog) {
+    setCopyState("先生成文章预测");
+    return;
+  }
+  await navigator.clipboard.writeText(state.predictionLog);
+  setCopyState("预测日志已复制");
+}
+
+function downloadPredictionLog() {
+  if (!state.predictionLog) {
+    setCopyState("先生成文章预测");
+    return;
+  }
+  const blob = new Blob([state.predictionLog], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${safeFileName(state.title || "prediction")}-prediction.md`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setCopyState("预测日志已下载");
+}
+
+function summarizeText(text, maxLength) {
+  return text.replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function hashText(text) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, "0").slice(0, 12);
 }
 
 function shouldReplaceTitle(title) {

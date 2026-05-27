@@ -17,6 +17,10 @@
           </div>
         </div>
         <div class="top-actions">
+          <button id="generateAgentBtnTop" class="ghost-btn" type="button" title="根据主题和素材生成新文章">
+            <span aria-hidden="true">◇</span>
+            <span>知识写作</span>
+          </button>
           <button id="autoFormatBtn" class="ghost-btn" type="button" title="把当前正文自动整理为公众号结构稿">
             <span aria-hidden="true">✦</span>
             <span>自动排版</span>
@@ -96,6 +100,48 @@
         </section>
 
         <aside class="control-pane" aria-label="排版控制">
+          <section class="control-section agent-section">
+            <div class="section-title">
+              <h2>知识写作 Agent</h2>
+              <p>主题 -> 选材 -> 重组 -> 评分</p>
+            </div>
+            <div class="agent-form">
+              <label>
+                <span>主题</span>
+                <input id="topicInput" type="text" autocomplete="off">
+              </label>
+              <label>
+                <span>目标读者</span>
+                <input id="readerInput" type="text" autocomplete="off">
+              </label>
+              <label>
+                <span>业务主线</span>
+                <input id="businessInput" type="text" autocomplete="off">
+              </label>
+              <label>
+                <span>Obsidian 笔记</span>
+                <textarea id="obsidianInput" rows="4" placeholder="粘贴相关笔记、标签、双链内容"></textarea>
+              </label>
+              <label>
+                <span>飞书云文档</span>
+                <textarea id="larkInput" rows="4" placeholder="粘贴会议纪要、方案、销售话术、SOP"></textarea>
+              </label>
+              <label>
+                <span>外部趋势素材</span>
+                <textarea id="trendInput" rows="4" placeholder="粘贴 AI 产品更新、新闻、竞品动态"></textarea>
+              </label>
+              <div class="agent-actions">
+                <button id="generateAgentBtn" class="primary-btn" type="button">生成新文章</button>
+                <button id="sampleAgentBtn" class="ghost-btn" type="button">填充样例</button>
+              </div>
+            </div>
+            <div id="scorePanel" class="score-panel"></div>
+            <div class="export-grid">
+              <button id="copyPredictionBtn" type="button">复制预测</button>
+              <button id="downloadPredictionBtn" type="button">下载预测</button>
+            </div>
+          </section>
+
           <section class="control-section">
             <div class="section-title">
               <h2>风格</h2>
