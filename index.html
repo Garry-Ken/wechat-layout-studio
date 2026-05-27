@@ -130,11 +130,25 @@
                 <span>外部趋势素材</span>
                 <textarea id="trendInput" rows="4" placeholder="粘贴 AI 产品更新、新闻、竞品动态"></textarea>
               </label>
+              <label>
+                <span>素材链接</span>
+                <textarea id="sourceLinksInput" rows="3" placeholder="每行一个链接：飞书云文档、Obsidian URI、网页、PDF、公众号文章"></textarea>
+              </label>
+              <div class="source-ingest">
+                <label class="file-drop">
+                  <span>上传 Word / PDF / Markdown / 图片</span>
+                  <input id="sourceFileInput" type="file" multiple accept=".txt,.md,.markdown,.html,.docx,.pdf,image/*">
+                </label>
+                <button id="fetchLinksBtn" class="ghost-btn" type="button">读取链接</button>
+              </div>
+              <div id="sourceStatus" class="source-status">支持粘贴图片到页面，图片会进入素材池。</div>
+              <div id="imageGallery" class="image-gallery"></div>
               <div class="agent-actions">
                 <button id="generateAgentBtn" class="primary-btn" type="button">生成新文章</button>
                 <button id="sampleAgentBtn" class="ghost-btn" type="button">填充样例</button>
               </div>
             </div>
+            <div id="pipelinePanel" class="pipeline-panel"></div>
             <div id="scorePanel" class="score-panel"></div>
             <div class="export-grid">
               <button id="copyPredictionBtn" type="button">复制预测</button>
@@ -184,6 +198,8 @@
             </div>
             <div class="export-grid">
               <button id="copyMarkdownBtn" type="button">复制 Markdown</button>
+              <button id="downloadCardBtn" type="button">下载图片卡</button>
+              <button id="copyCardBtn" type="button">复制图片卡</button>
               <button id="resetBtn" type="button">清空草稿</button>
             </div>
           </section>
@@ -206,6 +222,8 @@
       </div>
     </template>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

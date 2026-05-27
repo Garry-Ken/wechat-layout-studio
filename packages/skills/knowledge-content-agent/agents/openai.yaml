@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Content Agent"
+  short_description: "Private-knowledge content agent"
+  default_prompt: "Use my topic, private knowledge, trend signals, and business goal to create a scored article, video script, social variants, and publishing notes."

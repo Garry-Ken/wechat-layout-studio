@@ -166,6 +166,10 @@ const defaultState = {
   agentObsidian: "",
   agentLark: "",
   agentTrends: "",
+  sourceLinks: "",
+  uploadedSources: [],
+  sourceImages: [],
+  pipeline: [],
   lastScore: null,
   predictionLog: "",
 };
@@ -197,6 +201,11 @@ const els = {
   obsidian: document.querySelector("#obsidianInput"),
   lark: document.querySelector("#larkInput"),
   trends: document.querySelector("#trendInput"),
+  sourceLinks: document.querySelector("#sourceLinksInput"),
+  sourceFile: document.querySelector("#sourceFileInput"),
+  sourceStatus: document.querySelector("#sourceStatus"),
+  imageGallery: document.querySelector("#imageGallery"),
+  pipelinePanel: document.querySelector("#pipelinePanel"),
   scorePanel: document.querySelector("#scorePanel"),
 };
 
@@ -238,6 +247,7 @@ function hydrateInputs() {
   els.obsidian.value = state.agentObsidian;
   els.lark.value = state.agentLark;
   els.trends.value = state.agentTrends;
+  els.sourceLinks.value = state.sourceLinks;
 }
 
 function bindEvents() {
@@ -257,6 +267,7 @@ function bindEvents() {
     ["input", els.obsidian, "agentObsidian"],
     ["input", els.lark, "agentLark"],
     ["input", els.trends, "agentTrends"],
+    ["input", els.sourceLinks, "sourceLinks"],
   ].forEach(([eventName, element, key]) => {
     element.addEventListener(eventName, () => {
       state[key] = element.type === "range" ? Number(element.value) : element.value;
@@ -284,15 +295,20 @@ function bindEvents() {
   document.querySelector("#copyHtmlBtn").addEventListener("click", copyRichHtml);
   document.querySelector("#copyMarkdownBtn").addEventListener("click", copyMarkdown);
   document.querySelector("#downloadBtn").addEventListener("click", downloadHtml);
+  document.querySelector("#downloadCardBtn").addEventListener("click", downloadImageCard);
+  document.querySelector("#copyCardBtn").addEventListener("click", copyImageCard);
   document.querySelector("#cleanPasteBtn").addEventListener("click", cleanClipboardPaste);
   document.querySelector("#autoFormatBtn").addEventListener("click", autoFormatDraft);
   document.querySelector("#formatInlineBtn").addEventListener("click", autoFormatDraft);
   document.querySelector("#generateAgentBtn").addEventListener("click", generateAgentArticle);
   document.querySelector("#generateAgentBtnTop").addEventListener("click", generateAgentArticle);
   document.querySelector("#sampleAgentBtn").addEventListener("click", fillAgentSample);
+  document.querySelector("#sourceFileInput").addEventListener("change", handleSourceFiles);
+  document.querySelector("#fetchLinksBtn").addEventListener("click", fetchSourceLinks);
   document.querySelector("#copyPredictionBtn").addEventListener("click", copyPredictionLog);
   document.querySelector("#downloadPredictionBtn").addEventListener("click", downloadPredictionLog);
   document.querySelector("#resetBtn").addEventListener("click", resetDraft);
+  document.addEventListener("paste", handleImagePaste);
 }
 
 function renderThemeGrid() {
@@ -358,6 +374,8 @@ function render() {
   lastArticleHtml = buildCopyHtml(contentHtml, theme);
   renderStats();
   renderChecklist();
+  renderSourceAssets();
+  renderPipelinePanel();
   renderScorePanel();
   persistSoon();
 }
@@ -720,6 +738,133 @@ function downloadHtml() {
   setCopyState("HTML 已下载");
 }
 
+async function downloadImageCard() {
+  const blob = await createImageCardBlob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${safeFileName(state.title || "content-card")}-card.png`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setCopyState("图片卡已下载");
+}
+
+async function copyImageCard() {
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error("clipboard image unsupported");
+    const blob = await createImageCardBlob();
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    setCopyState("图片卡已复制");
+  } catch {
+    await downloadImageCard();
+    setCopyState("浏览器不支持复制图片，已改为下载");
+  }
+}
+
+async function createImageCardBlob() {
+  const canvas = document.createElement("canvas");
+  const width = 1080;
+  const height = 1440;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const theme = currentTheme();
+  const accent = theme.accent || "#d92d20";
+
+  ctx.fillStyle = "#f5f7fb";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, 70, 70, width - 140, height - 140, 36);
+  ctx.fill();
+
+  ctx.fillStyle = accent;
+  ctx.fillRect(70, 70, 12, height - 140);
+  ctx.fillStyle = "#111827";
+  ctx.font = "700 34px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText(state.account || "知识内容 Agent", 120, 150);
+
+  ctx.fillStyle = "#667085";
+  ctx.font = "400 26px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText("文章 / 视频 / 社交分发卡", 120, 196);
+
+  let y = 300;
+  ctx.fillStyle = "#111827";
+  ctx.font = "800 66px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  y = drawWrappedText(ctx, state.title || "未命名内容", 120, y, 840, 82, 4);
+
+  ctx.fillStyle = "#475467";
+  ctx.font = "400 34px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  y = drawWrappedText(ctx, state.summary || inferSummary(state.markdown), 120, y + 42, 840, 52, 4);
+
+  const bullets = extractCardBullets(state.markdown).slice(0, 4);
+  y += 54;
+  ctx.font = "500 32px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  bullets.forEach((item) => {
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(136, y - 11, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#27364a";
+    y = drawWrappedText(ctx, item, 164, y, 790, 48, 2) + 18;
+  });
+
+  const score = state.lastScore ? `传播 ${state.lastScore.virality.toFixed(1)} / 获客 ${state.lastScore.conversion.toFixed(1)}` : "主题驱动 · 私有知识 · 自动评分";
+  ctx.fillStyle = "#f2f4f7";
+  roundRect(ctx, 120, height - 245, 420, 72, 18);
+  ctx.fill();
+  ctx.fillStyle = "#344054";
+  ctx.font = "700 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText(score, 150, height - 199);
+
+  ctx.fillStyle = "#111827";
+  ctx.font = "700 30px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillText("把私有知识变成可传播、可获客的内容", 120, height - 125);
+
+  return await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.96));
+}
+
+function extractCardBullets(markdown) {
+  const listItems = (markdown.match(/^[-*]\s+(.+)$/gm) || []).map((line) => line.replace(/^[-*]\s+/, "").replace(/\*\*/g, ""));
+  if (listItems.length) return listItems;
+  return markdown
+    .split(/\n{2,}/)
+    .map((block) => block.replace(/^#+\s+/, "").replace(/[>*_`#-]/g, "").trim())
+    .filter((block) => block.length >= 12 && block.length <= 80)
+    .slice(0, 6);
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+  const clean = (text || "").replace(/\s+/g, " ").trim();
+  const lines = [];
+  let line = "";
+  for (const char of clean) {
+    const next = line + char;
+    if (ctx.measureText(next).width > maxWidth && line) {
+      lines.push(line);
+      line = char;
+      if (lines.length >= maxLines) break;
+    } else {
+      line = next;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  lines.forEach((item, index) => {
+    const suffix = index === maxLines - 1 && clean.length > lines.join("").length ? "..." : "";
+    ctx.fillText(`${item}${suffix}`, x, y + index * lineHeight);
+  });
+  return y + lines.length * lineHeight;
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
+}
+
 async function cleanClipboardPaste() {
   try {
     const items = await navigator.clipboard.read();
@@ -922,6 +1067,9 @@ function generateAgentArticle() {
     obsidian: state.agentObsidian,
     lark: state.agentLark,
     trends: state.agentTrends,
+    sourceLinks: state.sourceLinks,
+    uploadedSources: state.uploadedSources,
+    sourceImages: state.sourceImages,
   });
 
   state.title = result.title;
@@ -929,13 +1077,18 @@ function generateAgentArticle() {
   state.markdown = result.markdown;
   state.lastScore = result.score;
   state.predictionLog = result.predictionLog;
+  updatePipeline(result);
   hydrateInputs();
   render();
   setCopyState("已生成知识库文章和预测评分");
 }
 
 function hasAgentSources() {
-  return [state.agentObsidian, state.agentLark, state.agentTrends].some((value) => value.trim().length > 20);
+  return (
+    [state.agentObsidian, state.agentLark, state.agentTrends, state.sourceLinks].some((value) => value.trim().length > 20) ||
+    (state.uploadedSources || []).length > 0 ||
+    (state.sourceImages || []).length > 0
+  );
 }
 
 function fillAgentSample() {
@@ -1019,7 +1172,29 @@ function collectSourceBlocks(input) {
     ...splitSourceText(input.obsidian, "Obsidian"),
     ...splitSourceText(input.lark, "飞书"),
     ...splitSourceText(input.trends, "趋势"),
+    ...splitSourceText((input.uploadedSources || []).map((item) => `${item.name}\n${item.text}`).join("\n\n"), "上传文档"),
+    ...splitSourceText(extractLinkReferenceText(input.sourceLinks), "素材链接"),
+    ...(input.sourceImages || []).map((image, index) => ({
+      id: `图片-${index + 1}`,
+      source: "图片",
+      title: image.name || `图片 ${index + 1}`,
+      text: `${image.name || `图片 ${index + 1}`}：用户上传或粘贴的视觉素材，可作为封面、案例截图或正文配图。${image.note || ""}`,
+    })),
   ];
+}
+
+function extractLinkReferenceText(text) {
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      if (/feishu|larksuite|docs\.qq|yuque|notion|obsidian/i.test(line)) {
+        return `${line}\n私有知识链接：需要后端授权连接器读取正文；当前先作为引用线索参与选题和素材规划。`;
+      }
+      return `${line}\n公开链接：如果浏览器允许跨域读取，会进入上传文档素材；否则作为引用线索。`;
+    })
+    .join("\n\n");
 }
 
 function splitSourceText(text, source) {
@@ -1085,6 +1260,184 @@ function buildOpening(topic, reader, selected) {
   const pain = selected.find((item) => /新人|重复|找不到|不一致|浪费|老板|客户/.test(item.text));
   const detail = pain ? summarizeText(pain.text, 86) : `如果你是${reader}，这个问题大概率已经不只是技术问题，而是业务效率问题。`;
   return `这篇先不泛泛聊 ${topic}。我更关心一个具体问题：${detail}`;
+}
+
+async function handleSourceFiles(event) {
+  const files = [...event.target.files];
+  if (!files.length) return;
+  setSourceStatus(`正在读取 ${files.length} 个文件...`);
+  const nextSources = [...(state.uploadedSources || [])];
+  const nextImages = [...(state.sourceImages || [])];
+
+  for (const file of files) {
+    try {
+      if (file.type.startsWith("image/")) {
+        nextImages.push(await imageFileToSource(file));
+        continue;
+      }
+      nextSources.push({
+        name: file.name,
+        type: file.type || file.name.split(".").pop(),
+        text: await extractFileText(file),
+      });
+    } catch (error) {
+      nextSources.push({
+        name: file.name,
+        type: "error",
+        text: `文件 ${file.name} 暂时无法在浏览器内解析：${error.message || error}。建议先转成 Markdown/TXT，或后续接入后端文档解析服务。`,
+      });
+    }
+  }
+
+  state.uploadedSources = nextSources.slice(-20);
+  state.sourceImages = nextImages.slice(-12);
+  event.target.value = "";
+  setSourceStatus(`已接入 ${state.uploadedSources.length} 个文档、${state.sourceImages.length} 张图片。`);
+  render();
+}
+
+async function extractFileText(file) {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".markdown")) return await file.text();
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) return htmlToMarkdown(await file.text());
+  if (lower.endsWith(".docx")) {
+    if (!window.mammoth) throw new Error("Word 解析库未加载");
+    const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    return result.value;
+  }
+  if (lower.endsWith(".pdf")) {
+    if (!window.pdfjsLib) throw new Error("PDF 解析库未加载");
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pages = [];
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      pages.push(content.items.map((item) => item.str).join(" "));
+    }
+    return pages.join("\n\n");
+  }
+  return await file.text();
+}
+
+async function imageFileToSource(file) {
+  return {
+    name: file.name,
+    type: file.type,
+    dataUrl: await fileToDataUrl(file),
+    note: "浏览器版暂不做 OCR；图片会作为视觉素材进入排版，后端可接 OCR/多模态模型提取内容。",
+  };
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleImagePaste(event) {
+  const items = [...(event.clipboardData?.items || [])];
+  const imageItems = items.filter((item) => item.type.startsWith("image/"));
+  if (!imageItems.length) return;
+  const images = [...(state.sourceImages || [])];
+  for (const item of imageItems) {
+    const file = item.getAsFile();
+    if (file) images.push(await imageFileToSource(file));
+  }
+  state.sourceImages = images.slice(-12);
+  setSourceStatus(`已从剪贴板接入 ${imageItems.length} 张图片。`);
+  render();
+}
+
+async function fetchSourceLinks() {
+  const links = parseLinks(state.sourceLinks);
+  if (!links.length) {
+    setSourceStatus("先粘贴素材链接，每行一个。");
+    return;
+  }
+  setSourceStatus(`正在尝试读取 ${links.length} 个公开链接...`);
+  const fetched = [];
+  for (const url of links) {
+    if (/feishu|larksuite|obsidian:/i.test(url)) {
+      fetched.push({
+        name: url,
+        type: "private-link",
+        text: `${url}\n这是私有知识源链接。浏览器静态版无法代替你完成授权读取；后端连接器需要用飞书/本地 Obsidian 权限读取正文。当前先登记为素材线索。`,
+      });
+      continue;
+    }
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      const contentType = response.headers.get("content-type") || "";
+      const raw = await response.text();
+      const text = contentType.includes("html") ? htmlToMarkdown(raw) : raw;
+      fetched.push({ name: url, type: contentType || "url", text: summarizeText(text, 3000) });
+    } catch {
+      fetched.push({
+        name: url,
+        type: "url-reference",
+        text: `${url}\n浏览器因 CORS、登录或权限限制无法直接读取。后端 Source Agent 可用授权、代理或 API 抓取正文；当前先作为引用线索。`,
+      });
+    }
+  }
+  state.uploadedSources = [...(state.uploadedSources || []), ...fetched].slice(-20);
+  setSourceStatus(`链接处理完成：新增 ${fetched.length} 条素材记录。`);
+  render();
+}
+
+function parseLinks(text) {
+  return text
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter((item) => /^(https?:\/\/|obsidian:\/\/)/i.test(item));
+}
+
+function setSourceStatus(message) {
+  els.sourceStatus.textContent = message;
+}
+
+function renderSourceAssets() {
+  const docCount = (state.uploadedSources || []).length;
+  const imageCount = (state.sourceImages || []).length;
+  if (!els.sourceStatus.textContent || els.sourceStatus.textContent.includes("支持粘贴")) {
+    els.sourceStatus.textContent = `已接入 ${docCount} 个文档、${imageCount} 张图片。私有飞书/Obsidian 链接需要后端授权读取。`;
+  }
+  els.imageGallery.innerHTML = (state.sourceImages || [])
+    .slice(-6)
+    .map((image) => `<div class="image-tile"><img src="${image.dataUrl}" alt="${escapeAttribute(image.name)}"><span>${escapeHtml(image.name)}</span></div>`)
+    .join("");
+}
+
+function renderPipelinePanel() {
+  const steps = state.pipeline?.length
+    ? state.pipeline
+    : [
+        "Source Agent：接入文档、图片、链接和私有知识源",
+        "Knowledge Agent：从素材中召回业务经验和案例",
+        "Trend Agent：补充最新 AI 产品和行业变化",
+        "Writing Agent：重组观点并生成文章",
+        "Scoring Agent：给传播分、获客分和预测日志",
+        "Publish Agent：排版、草稿箱和手机确认",
+      ];
+  els.pipelinePanel.innerHTML = steps
+    .map((step, index) => `<div class="pipeline-step"><i>${index + 1}</i><span>${escapeHtml(step)}</span></div>`)
+    .join("");
+}
+
+function updatePipeline(result) {
+  const sourceCount = (state.uploadedSources || []).length + parseLinks(state.sourceLinks).length;
+  const imageCount = (state.sourceImages || []).length;
+  state.pipeline = [
+    `Source Agent：接入 ${sourceCount} 条链接/文档线索、${imageCount} 张图片`,
+    `Knowledge Agent：筛选 ${result.score.selectedSources.length} 条高相关素材`,
+    "Trend Agent：补充趋势、产品和竞品信号",
+    `Writing Agent：围绕“${result.title}”生成新文章`,
+    `Scoring Agent：传播分 ${result.score.virality.toFixed(1)}，获客分 ${result.score.conversion.toFixed(1)}`,
+    "Publish Agent：已进入排版预览，可复制富文本或后续创建公众号草稿",
+  ];
 }
 
 function buildTrendSection(trends, topic) {

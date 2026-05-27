@@ -5,10 +5,14 @@
 - Markdown 编辑与实时微信宽度预览
 - 主题驱动的知识库写作 Agent MVP
 - 支持粘贴 Obsidian、飞书云文档和外部趋势素材后生成新文章
+- 支持上传 Markdown/TXT/HTML/Word/PDF 文档，支持粘贴或上传图片作为素材
+- 支持登记飞书、Obsidian、网页、PDF 和公众号素材链接，后续可接授权连接器读取正文
 - 文章生成后自动给出传播分、获客分、综合分和 8 维评分
 - 支持复制或下载发布前预测日志，方便后续 T+7d 复盘
+- 展示 Source / Knowledge / Trend / Writing / Scoring / Publish Agent 管线
 - 8 套公众号友好的内联样式主题
 - 复制为公众号后台可粘贴的富文本 HTML
+- 一键导出/复制 PNG 图片卡，适合朋友圈、社群和手机端转发
 - 粘贴整篇文章后一键自动结构化排版
 - 标题、摘要、封面、结构、图片、段落密度发布检查
 - 富文本剪贴板清洗成 Markdown
@@ -63,10 +67,12 @@ GitHub Pages 推荐设置：
 - 查看 [主题驱动的知识库写作 Agent](./docs/topic-driven-writing-agent.md)，这是更准确的产品方向：用户给主题，系统调取 Obsidian、飞书和外部素材，重组知识并生成一篇新文章。
 - 查看 [内容评分与校准系统](./docs/content-scoring-system.md)，参考 `cheat-on-content` 的“打分 -> 盲预测 -> 发布 -> 复盘 -> 升级 rubric”闭环，改造成公众号知识库文章评分。
 - 查看 [自动化公众号内容生产线蓝图](./docs/automation-blueprint.md)，里面拆了 Obsidian、飞书、热点抓取、AI 写作、公众号草稿和手机确认发布流程。
+- 查看 [产品化与定价方案](./docs/productization-and-pricing.md)，里面拆了自助版、Pro 版、3 万/5 万定制交付、视频脚本和图片卡片。
+- 查看 [Knowledge Content Agent Skill](./packages/skills/knowledge-content-agent/SKILL.md)，这是可分发到 Codex/Claude Code/其他 Agent 工具的内容生产 Skill 初版。
 - 接入图床上传，把本地图片和外链图片转成稳定 URL。
 - 增加 AI 标题、摘要、结构和口吻优化。
 - 增加公众号草稿接口发布，需要公众号 appID/appsecret 和素材上传流程。
-- 增加 Mermaid、LaTeX、长图/PDF 导出。
+- 增加 Mermaid、LaTeX、长图/PDF/图片卡片导出。
 
 ## License
 
