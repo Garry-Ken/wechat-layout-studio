@@ -55,6 +55,7 @@ GitHub Pages 推荐设置：
 ## 下一步建议
 
 - 查看 [主题驱动的知识库写作 Agent](./docs/topic-driven-writing-agent.md)，这是更准确的产品方向：用户给主题，系统调取 Obsidian、飞书和外部素材，重组知识并生成一篇新文章。
+- 查看 [内容评分与校准系统](./docs/content-scoring-system.md)，参考 `cheat-on-content` 的“打分 -> 盲预测 -> 发布 -> 复盘 -> 升级 rubric”闭环，改造成公众号知识库文章评分。
 - 查看 [自动化公众号内容生产线蓝图](./docs/automation-blueprint.md)，里面拆了 Obsidian、飞书、热点抓取、AI 写作、公众号草稿和手机确认发布流程。
 - 接入图床上传，把本地图片和外链图片转成稳定 URL。
 - 增加 AI 标题、摘要、结构和口吻优化。
